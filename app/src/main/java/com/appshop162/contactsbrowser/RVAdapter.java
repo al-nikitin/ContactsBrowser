@@ -1,13 +1,12 @@
 package com.appshop162.contactsbrowser;
 
-import android.content.Context;
 import android.graphics.Color;
-import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +16,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 public class RVAdapter extends RecyclerView.Adapter<RVAdapter.ContactsViewHolder> {
+
+    private String TAG = "RVAdapter";
 
     public ArrayList<Contact> contacts;
     public String numberEntered;
@@ -66,7 +67,6 @@ public class RVAdapter extends RecyclerView.Adapter<RVAdapter.ContactsViewHolder
             while (numberClone.contains(numberEntered)) {
                 int start = zeroIndex + numberClone.indexOf(numberEntered);
                 int end = start + numberEntered.length();
-                numberSS.setSpan(new RelativeSizeSpan(1.5f), start, end, 0);
                 numberSS.setSpan(new ForegroundColorSpan(Color.RED), start, end, 0);
                 numberClone = number.substring(end);
                 zeroIndex = end;
@@ -75,7 +75,7 @@ public class RVAdapter extends RecyclerView.Adapter<RVAdapter.ContactsViewHolder
         } else contactsViewHolder.tvNumber.setText(contact.number);
 
         if (contact.photo == null) {
-            System.out.println("sddsfdsfdsfcrfcdsds");
+            Log.e(TAG,"photo is null");
         } else contactsViewHolder.photo.setImageBitmap(contact.photo);
     }
 
@@ -94,10 +94,5 @@ public class RVAdapter extends RecyclerView.Adapter<RVAdapter.ContactsViewHolder
             tvName = (TextView) itemView.findViewById(R.id.contact_name);
             tvNumber = (TextView) itemView.findViewById(R.id.contact_number);
         }
-    }
-
-    public void addContactToRV(Contact contact) {
-        contacts.add(contact);
-        notifyDataSetChanged();
     }
 }

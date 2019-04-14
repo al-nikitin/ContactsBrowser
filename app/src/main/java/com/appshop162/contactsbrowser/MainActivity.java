@@ -3,12 +3,10 @@ package com.appshop162.contactsbrowser;
 import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentUris;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -24,6 +22,7 @@ import android.widget.TextView;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -34,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
 
     private String numberEntered = "";
     private TextView tvNumber;
+    private Bitmap defaultPhoto;
+    private HashMap<String, String> namePhonePairs = new HashMap<>();
+    private float scale;
 
     private static final int PERMISSIONS_REQUEST_CODE = 1240;
     String[] appPermissions = {
@@ -63,6 +65,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startApp() {
+
+        defaultPhoto = BitmapFactory.decodeResource(getResources(), R.drawable.default_photo);
+        scale = this.getResources().getDisplayMetrics().density;
+        System.out.println(scale);
 
         rvContacts = (RecyclerView) findViewById(R.id.rv_contacts);
         tvNumber = (TextView) findViewById(R.id.tv_number);
@@ -203,42 +209,53 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<Contact> getContactList() {
         ArrayList<Contact> contactList = new ArrayList<>();
         ContentResolver contentResolver = getContentResolver();
-        Cursor cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI,
+        Cursor cursor1 = contentResolver.query(ContactsContract.Contacts.CONTENT_URI,
                 null, null, null, null);
-        if ((cursor != null ? cursor.getCount() : 0) > 0) {
-            while (cursor != null && cursor.moveToNext()) {
-                String id = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
-                String name = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                if (cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0) {
-                    Cursor pCur = contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+        if ((cursor1 != null ? cursor1.getCount() : 0) > 0) {
+            while (cursor1 != null && cursor1.moveToNext()) {
+                String id = cursor1.getString(cursor1.getColumnIndex(ContactsContract.Contacts._ID));
+                String name = cursor1.getString(cursor1.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                if (cursor1.getInt(cursor1.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0) {
+                    Cursor cursor2 = contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                             null,
                             ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
                             new String[]{id}, null);
-                    while (pCur.moveToNext()) {
-                        String number = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                        Bitmap photo = null;
+                    while (cursor2.moveToNext()) {
+                        String number = cursor2.getString(cursor2.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        if ( !(namePhonePairs.containsKey(name) && namePhonePairs.get(name).equals(number)) ) {
+                            Bitmap photo = null;
 
-                        try {
-                            InputStream inputStream =
-                                    ContactsContract.Contacts.openContactPhotoInputStream(contentResolver,
-                                    ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, Long.valueOf(id)));
-                            if (inputStream != null) {
-                                photo = BitmapFactory.decodeStream(inputStream);
-                                inputStream.close();
+                            try {
+                                InputStream inputStream =
+                                        ContactsContract.Contacts.openContactPhotoInputStream(
+                                                contentResolver,
+                                                ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, Long.valueOf(id))
+                                        );
+                                if (inputStream != null) {
+                                    photo = BitmapFactory.decodeStream(inputStream);
+                                    inputStream.close();
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
 
-                        Contact contact = new Contact(name, number);
-                        contact.photo = photo;
-                        contactList.add(contact);
+                            Contact contact = new Contact(name, number);
+                            if (photo != null) {
+                                contact.photo = photo;
+                            } else contact.photo = defaultPhoto;
+
+                            int sideLengthScaled = (int) (72 * scale + 0.5f);
+                            contact.photo = Bitmap.createScaledBitmap(
+                                    contact.photo, sideLengthScaled, sideLengthScaled, false);
+                            namePhonePairs.put(name, number);
+                            contactList.add(contact);
+                        }
                     }
-                    pCur.close();
+                    cursor2.close();
                 }
             }
         }
-        if (cursor != null) cursor.close();
+        if (cursor1 != null) cursor1.close();
         return contactList;
     }
 }
